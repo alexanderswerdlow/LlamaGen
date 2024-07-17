@@ -51,8 +51,15 @@ class CustomDataset(Dataset):
 
 
 def build_imagenet(args, transform):
-    return ImageFolder(args.data_path, transform=transform)
-
+    if ',' in args.data_path:
+        data_paths = args.data_path.split(',')
+        datasets = [ImageFolder(path.strip(), transform=transform, is_valid_file=lambda x: ("test" not in x and ('jpg' in x or 'png' in x))) for path in data_paths]
+        for dataset in datasets:
+            print(f"{type(dataset)}: {len(dataset)}")
+        return torch.utils.data.ConcatDataset(datasets)
+    else:
+        return ImageFolder(args.data_path, transform=transform, is_valid_file=lambda x: "test" not in x)
+    
 def build_imagenet_code(args):
     feature_dir = f"{args.code_path}/imagenet{args.image_size}_codes"
     label_dir = f"{args.code_path}/imagenet{args.image_size}_labels"

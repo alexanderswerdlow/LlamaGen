@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
+import wandb
 
 import os
 import time
@@ -64,6 +65,11 @@ def main(args):
         cloud_checkpoint_dir = f"{cloud_results_dir}/{experiment_index:03d}-{model_string_name}/checkpoints"
         os.makedirs(cloud_checkpoint_dir, exist_ok=True)
         logger.info(f"Experiment directory created in cloud at {cloud_checkpoint_dir}")
+
+        # Initialize wandb
+        wandb.init(project="vq-image-tokenizer", config=args, entity='grads')
+        wandb.run.name = f"{experiment_index:03d}-{model_string_name}"
+        wandb.run.save()
     
     else:
         logger = create_logger(None)
@@ -141,15 +147,29 @@ def main(args):
     if args.vq_ckpt:
         checkpoint = torch.load(args.vq_ckpt, map_location="cpu")
         vq_model.load_state_dict(checkpoint["model"])
+        
         if args.ema:
             ema.load_state_dict(checkpoint["ema"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        vq_loss.discriminator.load_state_dict(checkpoint["discriminator"])
-        optimizer_disc.load_state_dict(checkpoint["optimizer_disc"])
+
+        if "optimizer" in checkpoint:
+            optimizer.load_state_dict(checkpoint["optimizer"])
+        else:
+            logger.info("No optimizer state found in checkpoint, using default optimizer")
+
+        if "discriminator" in checkpoint:
+            vq_loss.discriminator.load_state_dict(checkpoint["discriminator"])
+        else:
+            logger.info("No discriminator state found in checkpoint, using default discriminator")
+
+        if "optimizer_disc" in checkpoint:
+            optimizer_disc.load_state_dict(checkpoint["optimizer_disc"])
+        else:
+            logger.info("No optimizer_disc state found in checkpoint, using default optimizer_disc")
+
         if not args.finetune:
             train_steps = checkpoint["steps"] if "steps" in checkpoint else int(args.vq_ckpt.split('/')[-1].split('.')[0])
             start_epoch = int(train_steps / int(len(dataset) / args.global_batch_size))
-            train_steps = int(start_epoch * int(len(dataset) / args.global_batch_size))
+            # train_steps = int(start_epoch * int(len(dataset) / args.global_batch_size))
         else:
             train_steps = 0
             start_epoch = 0           
@@ -174,6 +194,8 @@ def main(args):
     vq_loss.train()
 
     ptdtype = {'none': torch.float32, 'bf16': torch.bfloat16, 'fp16': torch.float16}[args.mixed_precision]
+
+    logger.info(f"ptdtype: {ptdtype}")
 
     # Variables for monitoring/logging purposes:
     log_steps = 0
@@ -221,6 +243,7 @@ def main(args):
             log_steps += 1
             train_steps += 1
             if train_steps % args.log_every == 0:
+                print(f'Logging...')
                 # Measure training speed:
                 torch.cuda.synchronize()
                 end_time = time.time()
@@ -235,8 +258,19 @@ def main(args):
                 log_steps = 0
                 start_time = time.time()
 
+                if rank == 0:
+                    # Log to wandb
+                    wandb.log({
+                        "train/loss": avg_loss,
+                        "train/steps_per_sec": steps_per_sec,
+                        "train/learning_rate": optimizer.param_groups[0]['lr'],
+                        "train/epoch": epoch,
+                        "train/step": train_steps,
+                    }, step=train_steps)
+
             # Save checkpoint:
             if train_steps % args.ckpt_every == 0 and train_steps > 0:
+                print(f'Saving checkpoint...')
                 if rank == 0:
                     if args.compile:
                         model_weight = vq_model.module._orig_mod.state_dict()

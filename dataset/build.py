@@ -3,7 +3,7 @@ from dataset.coco import build_coco
 from dataset.openimage import build_openimage
 from dataset.pexels import build_pexels
 from dataset.t2i import build_t2i, build_t2i_code, build_t2i_image
-
+import sys
 
 def build_dataset(args, **kwargs):
     # images
@@ -23,5 +23,9 @@ def build_dataset(args, **kwargs):
         return build_t2i(args, **kwargs)
     if args.dataset == 't2i_code':
         return build_t2i_code(args, **kwargs)
+    if args.dataset == 'face':
+        sys.path.append('/home/mprabhud/aswerdlo/repos/mdlm')
+        from models.datasets.combined_face_datasets import get_combined_face_datasets
+        return get_combined_face_datasets(args, **kwargs)
     
     raise ValueError(f'dataset {args.dataset} is not supported')
