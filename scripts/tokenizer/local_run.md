@@ -1,5 +1,5 @@
 torchrun \
---nnodes=1 --nproc_per_node=8 \
+--nnodes=1 --nproc_per_node=1 \
 tokenizer/tokenizer_image/vq_train.py \
 --vq-model="VQ-8" \
 --dataset face \
@@ -7,7 +7,7 @@ tokenizer/tokenizer_image/vq_train.py \
 --codebook-size 8192 \
 --codebook-embed-dim 32 \
 --image-size 512 \
---global-batch-size 2 \
+--global-batch-size 4 \
 --gradient-accumulation-steps 2 \
 --ckpt-every 2000 \
 --cloud-save-path '/grogu/user/mprabhud/aswerdlo/llamagen/debug' \

@@ -43,13 +43,12 @@ srun --label torchrun \
 tokenizer/tokenizer_image/vq_train.py \
 --vq-model="VQ-8" \
 --dataset face \
---data-path '/compute/grogu-1-40/aswerdlo/data/vggface2/data/train,/grogu/user/mprabhud/data/diffusion/ffhq,/grogu/user/mprabhud/data/diffusion/celeba_hq' \
+--data-path '/home/test' \
 --codebook-size 8192 \
 --codebook-embed-dim 32 \
 --image-size 512 \
---global-batch-size $((8 * nproc_per_node * nnodes)) \
---gradient-accumulation-steps 1 \
+--global-batch-size $((4 * nproc_per_node * nnodes)) \
+--gradient-accumulation-steps 4 \
 --ckpt-every 2000 \
 --cloud-save-path '/grogu/user/mprabhud/aswerdlo/llamagen/outputs' \
---disc-start 6000 \
---no_local_save
+--disc-start 5000

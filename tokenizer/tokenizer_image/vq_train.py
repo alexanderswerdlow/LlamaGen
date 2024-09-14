@@ -332,7 +332,7 @@ if __name__ == "__main__":
     parser.add_argument("--dropout-p", type=float, default=0.0, help="dropout_p")
     parser.add_argument("--results-dir", type=str, default="results_tokenizer_image")
     parser.add_argument("--dataset", type=str, default='imagenet')
-    parser.add_argument("--image-size", type=int, choices=[256, 512], default=256)
+    parser.add_argument("--image-size", type=int, choices=[128, 256, 512], default=256)
     parser.add_argument("--epochs", type=int, default=40)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--weight-decay", type=float, default=5e-2, help="Weight decay to use.")
